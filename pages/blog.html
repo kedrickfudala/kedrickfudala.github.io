@@ -13,13 +13,6 @@ title: my blog
             <time datetime="{{ post.date | date_to_xmlschema }}">
                 {{ post.date | date: "%x" }}
             </time>
-            <!-- {% if post.categories %}
-            <span class="post-categories">
-                {% for category in post.categories %}
-                <span class="category">{{ category }}</span>
-                {% endfor %}
-            </span>
-            {% endif %} -->
         </div>
         <div class="post-excerpt">
             {{ post.excerpt }}

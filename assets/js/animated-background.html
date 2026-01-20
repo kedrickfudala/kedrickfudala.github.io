@@ -210,23 +210,9 @@
         gl.uniform1f(u_min_thick, 0.05);
         gl.uniform1f(u_speed, 0.02);
         gl.uniform1f(u_direction, -45.0);
-        // gl.uniform4f(u_color2, 75/255, 67/255, 73/255, 1.0); // Color1
-        // gl.uniform4f(u_color1, 144/255, 76/255, 45/255, 1.0); // Color2
-
-        // const color1 = hexToRgb('#F2CD5D');
-        // const color2 = hexToRgb('#DEA54B');
-
-        // const color1 = hexToRgb('#E5E5E5');
-        // const color2 = hexToRgb('#EEEEEE');
-
-        // const color1 = hexToRgb('#ECE7CA');
-        // const color2 = hexToRgb('#E3D8B7');
 
         const color2 = hexToRgb('#3b392a');
         const color1 = hexToRgb('#5a473e');
-
-        // const color1 = hexToRgb('#657c8e');
-        // const color2 = hexToRgb('#4c5176');
 
         gl.uniform4f(u_color1, color1.r, color1.g, color1.b, 1.0); // Color1
         gl.uniform4f(u_color2, color2.r, color2.g, color2.b, 1.0); // Color2
