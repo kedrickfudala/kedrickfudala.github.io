@@ -1,0 +1,18 @@
+---
+layout: default
+title: my games
+panel_width: 1200px
+---
+
+<p>games i worked on</p>
+
+<div class="games-grid">
+    {% for game in site.data.games %}
+    <div class="game-card">
+        <a href="{{ game.url }}" target="_blank">
+            <img src="{{ game.image }}" alt="{{ game.title }}">
+            <h3>{{ game.title }}</h3>
+        </a>
+    </div>
+    {% endfor %}
+</div>

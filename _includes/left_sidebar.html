@@ -1,0 +1,31 @@
+<header class="site-sidebar">
+    <div class="sidebar-section">
+        <div class="section-header">
+            <h3 class="color-1">navigation</h3>
+        </div>
+        <nav class="section-links">
+            <a href="{{ '/' | relative_url }}">home</a>
+            <a href="{{ './pages/about' | relative_url }}">about</a>
+            <a href="{{ './pages/games' | relative_url }}">games</a>
+            <!-- <a href="{{ './pages/art' | relative_url }}">art</a>
+            <a href="{{ './pages/blog' | relative_url }}">blog</a> -->
+        </nav>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="section-header">
+            <h3 class="color-2">status</h3>
+        </div>
+        {% include status.html %}
+    </div>
+
+    <div class="sidebar-section">
+        <div class="section-header">
+            <h3 class="color-3">connect</h3>
+        </div>
+        <nav class="section-links">
+            <a href="https://www.linkedin.com/in/kedrick-fudala/" target="_blank">linkedin</a>
+            <a href="https://kedrickfudala.itch.io" target="_blank">itch.io</a>
+        </nav>
+    </div>
+</header>

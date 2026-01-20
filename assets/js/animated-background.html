@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('bg-canvas');
+        const gl = canvas.getContext('webgl');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function hexToRgb(hex) {
+            hex = hex.replace('#', '');
+            hex = hex.replace(' ', '');
+            
+            const r = parseInt(hex.substring(0, 2), 16) / 255;
+            const g = parseInt(hex.substring(2, 4), 16) / 255;
+            const b = parseInt(hex.substring(4, 6), 16) / 255;
+            
+            return { r, g, b };
+        }
+
+        // Vertex shader (simple passthrough)
+        const vertexShaderSource = `
+            attribute vec2 position;
+            void main() {
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `;
+
+        // Fragment shader (converted from your Godot shader)
+        const fragmentShaderSource = `
+            precision mediump float;
+            uniform vec2 u_resolution;
+            uniform float u_time;
+            uniform float u_separation;
+            uniform float u_radius;
+            uniform float u_min_thick;
+            uniform float u_speed;
+            uniform float u_direction;
+            uniform vec4 u_color1;
+            uniform vec4 u_color2;
+            
+            // Simple noise function (replaces texture sampling)
+            float hash(vec2 p) {
+                p = fract(p * vec2(123.34, 456.21));
+                p += dot(p, p + 45.32);
+                return fract(p.x * p.y);
+            }
+            
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                
+                float a = hash(i);
+                float b = hash(i + vec2(1.0, 0.0));
+                float c = hash(i + vec2(0.0, 1.0));
+                float d = hash(i + vec2(1.0, 1.0));
+                
+                return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+            }
+            
+            float get_line(vec2 uv, vec2 point1, vec2 point2, vec2 dir) {
+                // get the distance of the uv from our line
+                vec3 cross_prod = cross(vec3(point2 - point1, 0.0), vec3(point1 - uv, 0.0));
+                float line_dist = length(cross_prod) / length(point2 - point1);
+                
+                // Calculate the position along the line
+                float t = dot(uv - point1, point2 - point1) / dot(point2 - point1, point2 - point1);
+                
+                // sample the noise at the midpoint of the line
+                vec2 midpoint = (point1 + point2) / 2.0;
+                float sample = smoothstep(0.0, 1.0, noise(midpoint + -dir * u_speed * u_time));
+                
+                // calculate our thickness range
+                float range = (sample - 0.5) * 2.0 + 0.5;
+                float min_thickness = u_radius * u_min_thick * range;
+                float max_thickness = u_radius * 0.95;
+                
+                // use a gaussian function for the curve of the connecting line
+                float line_thickness = mix(max_thickness, min_thickness, exp(-pow((t - 0.5) * 4.0, 2.0)));
+                
+                // is our pixel within the line?
+                float line = step(line_dist, line_thickness * 0.8);
+                
+                // cut off the line after a certain point if the line would be thin enough
+                line = mix(0.0, line, step(0.2, sample));
+                
+                return line;
+            }
+            
+            void main() {
+                // set up the direction
+                float direction_radians = radians(u_direction);
+                vec2 dir = vec2(sin(direction_radians), cos(direction_radians));
+                
+                // preserve ratio
+                vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+                float ratio = u_resolution.x / u_resolution.y;
+                uv = vec2(uv.x * ratio, uv.y) + dir * u_speed * u_time;
+                
+                // rotate by 45 degrees
+                float angle = 3.14159265 / 4.0;
+                uv = vec2(cos(angle) * uv.x - sin(angle) * uv.y, sin(angle) * uv.x + cos(angle) * uv.y);
+                
+                // get our circle points
+                vec2 point1 = vec2(floor(uv.x / u_separation), floor(uv.y / u_separation + 0.5)) * u_separation;
+                vec2 point2 = vec2(point1.x + u_separation, point1.y);
+                vec2 cpoint1 = vec2(floor(uv.x / u_separation + 0.5), floor(uv.y / u_separation)) * u_separation;
+                vec2 cpoint2 = vec2(cpoint1.x, cpoint1.y + u_separation);
+                
+                // draw two circles
+                float circle1 = step(distance(uv, point1), u_radius);
+                float circle2 = step(distance(uv, point2), u_radius);
+                
+                // horizontal and vertical line connections
+                float line1 = get_line(uv, point1, point2, dir);
+                float line4 = get_line(uv, cpoint1, cpoint2, dir);
+                
+                // merge all of our pixel values
+                float lines = max(line1, line4);
+                float circles = max(circle1, circle2);
+                float shape = max(circles, lines);
+                
+                // blend between the two colors
+                vec4 color = mix(u_color2, u_color1, shape);
+                gl_FragColor = color;
+            }
+        `;
+
+        // Compile shaders
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        // Create program
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(program));
+        }
+
+        gl.useProgram(program);
+
+        // Set full screen geometry
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,
+            1, -1,
+            -1, 1,
+            1, 1
+        ]), gl.STATIC_DRAW);
+
+        const positionLocation = gl.getAttribLocation(program, 'position');
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        // Uniform Locations
+        const u_resolution = gl.getUniformLocation(program, 'u_resolution');
+        const u_time = gl.getUniformLocation(program, 'u_time');
+        const u_separation = gl.getUniformLocation(program, 'u_separation');
+        const u_radius = gl.getUniformLocation(program, 'u_radius');
+        const u_min_thick = gl.getUniformLocation(program, 'u_min_thick');
+        const u_speed = gl.getUniformLocation(program, 'u_speed');
+        const u_direction = gl.getUniformLocation(program, 'u_direction');
+        const u_color1 = gl.getUniformLocation(program, 'u_color1');
+        const u_color2 = gl.getUniformLocation(program, 'u_color2');
+
+        gl.uniform1f(u_separation, 0.03);
+        gl.uniform1f(u_radius, 0.01);
+        gl.uniform1f(u_min_thick, 0.05);
+        gl.uniform1f(u_speed, 0.02);
+        gl.uniform1f(u_direction, -45.0);
+        // gl.uniform4f(u_color2, 75/255, 67/255, 73/255, 1.0); // Color1
+        // gl.uniform4f(u_color1, 144/255, 76/255, 45/255, 1.0); // Color2
+
+        // const color1 = hexToRgb('#F2CD5D');
+        // const color2 = hexToRgb('#DEA54B');
+
+        // const color1 = hexToRgb('#E5E5E5');
+        // const color2 = hexToRgb('#EEEEEE');
+
+        // const color1 = hexToRgb('#ECE7CA');
+        // const color2 = hexToRgb('#E3D8B7');
+
+        const color2 = hexToRgb('#3b392a');
+        const color1 = hexToRgb('#5a473e');
+
+        // const color1 = hexToRgb('#657c8e');
+        // const color2 = hexToRgb('#4c5176');
+
+        gl.uniform4f(u_color1, color1.r, color1.g, color1.b, 1.0); // Color1
+        gl.uniform4f(u_color2, color2.r, color2.g, color2.b, 1.0); // Color2
+
+        // Animation loop
+        function render(time) {
+            time *= 0.001; // Convert to seconds
+            
+            gl.uniform2f(u_resolution, canvas.width, canvas.height);
+            gl.uniform1f(u_time, time);
+            
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+    </script>
+</body>
+</html>

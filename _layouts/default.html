@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
+    <meta name="description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fascinate+Inline&family=Honk:MORF,SHLN@45,58.4&family=Jacquard+24&family=Jersey+10&family=Major+Mono+Display&family=Pixelify+Sans:wght@400..700&family=Sixtyfour&family=Special+Elite&display=swap" rel="stylesheet">
+</head>
+<body{% if page.class %} class="{{ page.class }}"{% endif %}{% if page.panel_width %} style="--center-panel-width: {{ page.panel_width }};"{% endif %}>
+    <iframe src="{{ '/assets/js/animated-background.html' | relative_url }}" 
+            style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                   border: none; z-index: -1; pointer-events: none;">
+    </iframe>
+
+    {% include header.html %}
+
+    <div class="container">
+        {% include left_sidebar.html %}
+
+        <main class="center-panel">
+            <div class="section-header">
+                <h3 class="color-0">{{ page.title }}</h3>
+            </div>
+            <div class="main-content">
+                {{ content }}
+            </div>
+        </main>
+    </div>
+
+    {% include footer.html %}
+</body>
