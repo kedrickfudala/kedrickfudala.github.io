@@ -1,5 +1,4 @@
-My custom website :)
+My custom website
 
-
-local testing:
+For local testing:
 bundle exec jekyll serve
